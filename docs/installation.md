@@ -6,7 +6,7 @@ To install boards, run this command in your
 terminal:
 
 ``` console
-pip install boards
+pip install zillionare-ths-boards
 ```
 
 This is the preferred method to install boards, as it will always install the most recent stable release.

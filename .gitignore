@@ -109,3 +109,4 @@ site/
 
 # vscode extension - local history
 .history/
+boards/boards.zarr
