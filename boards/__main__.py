@@ -2,4 +2,5 @@ import fire
 
 from boards.app import start
 
-fire.Fire({"start": start})
+if __name__ == "__main__":
+    fire.Fire({"start": start})
