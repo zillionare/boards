@@ -1,5 +1,6 @@
 """Main module."""
 import logging
+import os
 from threading import Thread
 
 import pkg_resources
@@ -9,7 +10,6 @@ from sanic import Sanic, response
 from boards.board import ConceptBoard, IndustryBoard, sync_board
 
 application = Sanic("boards")
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 ver = pkg_resources.get_distribution("zillionare-ths-boards").parsed_version
 
@@ -21,7 +21,31 @@ async def root(request):
     )
 
 
-def start(port: int = 2308):
+def start(port: int = 2308, log_file="/var/log/boards/server.log"):
+    log_dir = os.path.dirname(log_file)
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    format = (
+        "[%(asctime)s] %(levelname)s [%(name)s.%(funcName)s:%(lineno)d] %(message)s"
+    )
+    formatter = logging.Formatter(format)
+    try:
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir, exist_ok=True)
+
+        handler = logging.handlers.RotatingFileHandler(
+            log_file, maxBytes=10 * 1024 * 1024, backupCount=7
+        )
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+    except Exception:
+        print(
+            "failed to create log dir. logging messages will be output to console instead"
+        )
+        handler = logging.StreamHandler()
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+
     scheduler = BackgroundScheduler()
     scheduler.add_job(sync_board, trigger="cron", hour=5)
     scheduler.add_job(ConceptBoard.init, "date")

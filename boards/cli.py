@@ -9,7 +9,7 @@ import time
 import fire
 import httpx
 
-from boards.board import ConceptBoard
+from boards.board import ConceptBoard, IndustryBoard, sync_board
 
 
 def _save_proc_info(port, proc):
@@ -22,16 +22,23 @@ def _save_proc_info(port, proc):
 def _read_proc_info():
     path = os.path.dirname(__file__)
     file = os.path.join(path, "config")
-    with open(file, "r") as f:
-        info = json.load(f)
-        return info
+    try:
+        with open(file, "r") as f:
+            info = json.load(f)
+            return info
+    except FileNotFoundError:
+        pass
+    except Exception as e:
+        print(e)
+
+    return None
 
 
-def status(port: int = None) -> bool:
+def is_service_alive(port: int = None) -> bool:
     if port is None:
         info = _read_proc_info()
         if info is None:
-            print("请指定服务器端口")
+            print("无法确定服务器状态，请指定服务器端口")
             return
 
         port = info["port"]
@@ -39,7 +46,6 @@ def status(port: int = None) -> bool:
     try:
         resp = httpx.get(f"http://localhost:{port}/")
         if resp.status_code == 200:
-            print("board服务正在运行")
             return True
         else:
             print("board服务已经运行，但无法访问", resp.status_code)
@@ -49,14 +55,31 @@ def status(port: int = None) -> bool:
     return False
 
 
+def status(port: int = None) -> bool:
+    is_running = is_service_alive(port)
+    if is_running:
+        print("------ board服务正在运行 ------")
+
+    ib = IndustryBoard()
+    cb = ConceptBoard()
+    ib.init()
+    cb.init()
+
+    info = ib.info()
+    print(f"行业板块已更新至: {info['last_sync_date']},共{len(info['history'])}天数据。")
+
+    info = cb.info()
+    print(f"概念板块已更新至: {info['last_sync_date']},共{len(info['history'])}天数据。")
+
+
 def serve(port: int = 2308):
-    if status(port):
+    if is_service_alive(port):
         return
 
-    proc = subprocess.Popen([sys.executable, "-m", "boards", "start", f"{port}"])
+    proc = subprocess.Popen([sys.executable, "-m", "boards", "serve", f"{port}"])
 
     for i in range(30):
-        if status(port):
+        if is_service_alive(port):
             _save_proc_info(port=port, proc=proc.pid)
             break
         else:
@@ -81,9 +104,16 @@ def new_members(days: int = 10, prot: int = None):
         if len(results) == 0:
             print(f"近{days}天内没有板块有新增成员")
         else:
-            print(results)
+            for board, stocks in results.items():
+                print(cb.get_name(board) + ":")
+                aliases = [cb.get_stock_alias(stock) for stock in stocks]
+                print(" ".join(aliases))
     except Exception as e:
         print(e)
+
+
+def sync():
+    sync_board()
 
 
 def main():
@@ -93,6 +123,7 @@ def main():
             "new_boards": new_boards,
             "serve": serve,
             "status": status,
+            "sync": sync,
         }
     )
 

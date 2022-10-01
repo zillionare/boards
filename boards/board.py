@@ -47,6 +47,21 @@ def stock_board_concept_name_ths():
 
 
 class Board:
+    """行业板块及概念板块基类
+
+    数据组织：
+        /
+        ├── concept
+        │   ├── boards [date, name, code, members] #members is count of all members
+        │   ├── members
+        │   │   ├── 20220925 [('board', '<U6'), ('code', '<U6')]
+        │   │   └── 20221001 [('board', '<U6'), ('code', '<U6')]
+        │   └── valuation
+        │       ├── 20220925 [code, turnover, vr, amount, circulation_stock, circulation_market_value]
+
+    /{category}/members.attrs.get("latest")表明当前数据更新到哪一天。
+    """
+
     _store = None
     _store_path = None
     category = "NA"
@@ -63,10 +78,13 @@ class Board:
             return
 
         cur_dir = os.path.dirname(__file__)
-        cls._store_path = os.environ.get("boards_store_path") or os.path.join(
-            cur_dir, "boards.zarr"
+        cls._store_path = (
+            store_path
+            or os.environ.get("boards_store_path")
+            or os.path.join(cur_dir, "boards.zarr")
         )
 
+        logger.info("the store is %s", cls._store_path)
         try:
             cls._store = zarr.open(cls._store_path, mode="a")
             if f"/{cls.category}/boards" in cls._store:  # already contains data
@@ -75,8 +93,7 @@ class Board:
             pass
         except Exception as e:
             logger.exception(e)
-            os.rename(store_path, f"{store_path}.corrupt")
-            os.remove(store_path)
+            os.rename(cls._store_path, f"{store_path}.corrupt")
 
         if cls.syncing:
             return
@@ -205,7 +222,6 @@ class Board:
                 df = stock_board_concept_cons_ths(symbol=name)
                 df["board"] = code
                 members.append(df)
-
         # for industry board, ak won't return count of the board, had to do by ourself
         if cls.category == "industry":
             cls._store[f"{cls.category}/boards"]["members"] = counts
@@ -214,8 +230,8 @@ class Board:
         today = arrow.now().format("YYYYMMDD")
 
         members_path = f"{cls.category}/members/{today}"
-        members = (pd.concat(members))[["board", "代码"]].to_records(index=False)
-        members_dtype = [("board", "<U6"), ("code", "<U6")]
+        members = (pd.concat(members))[["board", "代码", "名称"]].to_records(index=False)
+        members_dtype = [("board", "<U6"), ("code", "<U6"), ("name", "<U8")]
         cls._store[members_path] = np.array(members, dtype=members_dtype)
         cls._store[f"{cls.category}/members"].attrs["latest"] = today
 
@@ -230,7 +246,6 @@ class Board:
             ("pe", "f4"),
         ]
         cls._store[valuation_path] = np.array(valuation, dtype=valuation_dtype)
-        cls._store[f"{cls.category}/members"].attrs["valuation"] = today
 
     @property
     def members_group(self):
@@ -251,6 +266,15 @@ class Board:
     @property
     def store(self):
         return self.__class__._store
+
+    def info(self) -> Dict[str, Any]:
+        last_sync_date = self.store[f"{self.category}/members"].attrs.get("latest")
+        history = list(self.members_group.keys())
+
+        return {
+            "last_sync_date": last_sync_date,
+            "history": history,
+        }
 
     def get_boards(self, code: str, date: datetime.date = None) -> List[str]:
         """给定股票，返回其所属的板块
@@ -302,6 +326,15 @@ class Board:
             return self.boards[idx]["name"][0]
         else:
             return None
+
+    def get_stock_alias(self, code: str) -> str:
+        """给定股票代码，返回其名字"""
+        latest = self.store[f"{self.category}/members"].attrs.get("latest")
+        members = self.members_group[latest]
+        idx = np.argwhere(members["code"] == code).flatten()
+        if len(idx) > 0:
+            return members[idx[0]]["name"].item()
+        return code
 
     def fuzzy_match_board_name(self, name: str) -> List[str]:
         """给定板块名称，查找名字近似的板块，返回其代码
@@ -490,10 +523,12 @@ class ConceptBoard(Board):
 def sync_board():
     try:
         IndustryBoard.syncing = True
+        IndustryBoard.init()
         IndustryBoard.fetch_board_list()
         IndustryBoard.fetch_board_members()
 
         ConceptBoard.syncing = True
+        ConceptBoard.init()
         ConceptBoard.fetch_board_list()
         ConceptBoard.fetch_board_members()
     except Exception as e:
