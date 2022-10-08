@@ -2,13 +2,13 @@
 
 
 <p align="center">
-<a href="https://pypi.python.org/pypi/zillionare-ths-boards">
-    <img src="https://img.shields.io/pypi/v/boazillionare-ths-boardsrds.svg"
+<a href="https://pypi.org/pypi/zillionare-ths-boards">
+    <img src="https://img.shields.io/pypi/v/zillionare-ths-boards.svg"
         alt = "Release Status">
 </a>
 
 <a href="https://github.com/zillionare/boards/actions">
-    <img src="https://github.com/zillionare/boards/actions/workflows/main.yml/badge.svg?branch=release" alt="CI Status">
+    <img src="https://github.com/zillionare/boards/actions/workflows/release.yml/badge.svg?branch=release" alt="CI Status">
 </a>
 
 <a href="https://zillionare.github.io/boards/">
