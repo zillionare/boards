@@ -2,6 +2,7 @@
 
 import json
 import os
+import signal
 import subprocess
 import sys
 import time
@@ -72,6 +73,21 @@ def status(port: int = None) -> bool:
     print(f"概念板块已更新至: {info['last_sync_date']},共{len(info['history'])}天数据。")
 
 
+def stop():
+    info = _read_proc_info()
+    if info is None:
+        print("未发现正在运行的boards服务")
+        return
+
+    proc = info["proc"]
+    try:
+        os.kill(proc, signal.SIGKILL)
+    except ProcessLookupError:
+        sys.exit()
+    if not is_service_alive():
+        print("boards已停止运行")
+
+
 def serve(port: int = 2308):
     if is_service_alive(port):
         return
@@ -124,6 +140,7 @@ def main():
             "serve": serve,
             "status": status,
             "sync": sync,
+            "stop": stop,
         }
     )
 

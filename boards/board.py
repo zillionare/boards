@@ -1,4 +1,6 @@
+import contextlib
 import datetime
+import io
 import logging
 import os
 import re
@@ -25,25 +27,29 @@ def to_float_or_none(v: Any):
 @retry(Exception, tries=5, backoff=2, delay=30, logger=logger)
 def stock_board_industry_cons_ths(symbol):
     logger.info("fetching industry board members for %s", symbol)
-    return ak.stock_board_industry_cons_ths(symbol)
+    with contextlib.redirect_stdout(io.StringIO()):
+        return ak.stock_board_industry_cons_ths(symbol)
 
 
 @retry(Exception, tries=5, backoff=2, delay=30, logger=logger)
 def stock_board_concept_cons_ths(symbol):
     logger.info("fetching concept board members for %s", symbol)
-    return ak.stock_board_concept_cons_ths(symbol)
+    with contextlib.redirect_stdout(io.StringIO()):
+        return ak.stock_board_concept_cons_ths(symbol)
 
 
 @retry(Exception, tries=5, backoff=2, delay=30, logger=logger)
 def stock_board_industry_name_ths():
     logger.info("fetching industry board list")
-    return ak.stock_board_industry_name_ths()
+    with contextlib.redirect_stdout(io.StringIO()):
+        return ak.stock_board_industry_name_ths()
 
 
 @retry(Exception, tries=5, backoff=2, delay=30, logger=logger)
 def stock_board_concept_name_ths():
     logger.info("fetching concept board list")
-    return ak.stock_board_concept_name_ths()
+    with contextlib.redirect_stdout(io.StringIO()):
+        return ak.stock_board_concept_name_ths()
 
 
 class Board:

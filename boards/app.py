@@ -52,5 +52,11 @@ def start(port: int = 2308, log_file="/var/log/boards/server.log"):
     scheduler.add_job(IndustryBoard.init, "date")
     scheduler.start()
 
-    application.run(host="0.0.0.0", port=port, register_sys_signals=True)
+    application.run(
+        host="0.0.0.0",
+        port=port,
+        register_sys_signals=True,
+        workers=1,
+        single_process=True,
+    )
     logger.info("boards serve stopped")
