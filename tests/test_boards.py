@@ -195,18 +195,18 @@ class BoardTest(unittest.TestCase):
         cb = ConceptBoard()
 
         in_boards = ["881101", "其他"]
-        stocks = ib.search(in_boards)
+        stocks = ib.filter(in_boards)
         self.assertSetEqual(set({"601118"}), set(stocks))
 
         in_boards = ["881101", "其他"]
-        stocks = ib.search(in_boards, without=["881101"])
+        stocks = ib.filter(in_boards, without=["881101"])
         self.assertSetEqual(set(), set(stocks))
 
         in_boards = ["308016", "基因"]
-        stocks = cb.search(in_boards)
+        stocks = cb.filter(in_boards)
         self.assertSetEqual(set(["002041", "000998"]), set(stocks))
 
-        stocks = cb.search(in_boards, without=["308956"])
+        stocks = cb.filter(in_boards, without=["308956"])
         self.assertSetEqual(set(), set(stocks))
 
     def test_find_new_concept_boards(self):

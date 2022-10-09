@@ -140,6 +140,40 @@ def sync():
     sync_board()
 
 
+def filter(*within, without=[]):
+    cb = ConceptBoard()
+    cb.init()
+
+    codes = cb.filter(within, without=without)
+    for code in codes:
+        name = cb.get_stock_alias(code)
+        print(code, name)
+
+
+def show(sub: str, *args, **kwargs):
+    if sub == "concepts":
+        cb = ConceptBoard()
+        cb.init()
+
+        if kwargs.get("help"):
+            print("boards show concepts - 列出当前所有概念")
+            print("boards show concepts 000001 - 列出个股000001所属的概念板块")
+            return
+
+        if len(args) == 0:
+            for i, (date, code, name, *_) in enumerate(cb.boards):
+                print(date, code, name)
+
+            print(f"---- 总共{i}个概念 ----")
+        else:
+            code = str(args[0])
+            boards = cb.get_boards(code)
+            for board in boards:
+                print(board, cb.get_name(board))
+    else:
+        print("支持的子命令有concepts")
+
+
 def main():
     fire.Fire(
         {
@@ -149,6 +183,8 @@ def main():
             "status": status,
             "sync": sync,
             "stop": stop,
+            "filter": filter,
+            "show": show,
         }
     )
 

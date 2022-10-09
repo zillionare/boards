@@ -402,7 +402,7 @@ class Board:
 
         return ak.stock_board_industry_index_ths(name, start, end)
 
-    def search(self, in_boards: List[str], without: List[str] = []) -> List[str]:
+    def filter(self, in_boards: List[str], without: List[str] = []) -> List[str]:
         """查找同时存在于`in_boards`板块，但不在`without`板块的股票
 
         in_boards中的元素，既可以是代码、也可以是板块名称，还可以是模糊查询条件
@@ -414,11 +414,12 @@ class Board:
         Returns:
             满足条件的股票代码列表
         """
-        #
         normalized = []
         for board in in_boards:
             if not re.match(r"\d+", board):
                 found = self.fuzzy_match_board_name(board) or []
+                if not found:
+                    logger.warning("%s is not in our board list", board)
                 normalized.extend(found)
             else:
                 normalized.append(board)
@@ -434,9 +435,19 @@ class Board:
             else:
                 results = results.intersection(set(self.get_members(board)))
 
+        normalized_without = []
+        for item in without:
+            if not re.match(r"\d+", item):
+                codes = self.fuzzy_match_board_name(item)
+                if not codes:
+                    logger.warning("%s is not in our board list", item)
+                normalized_without.extend(codes)
+            else:
+                normalized_without.append(item)
+
         final_result = []
         for stock in results:
-            if set(self.get_boards(stock)).intersection(set(without)):
+            if set(self.get_boards(stock)).intersection(set(normalized_without)):
                 continue
 
             final_result.append(stock)

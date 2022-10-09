@@ -1,5 +1,8 @@
 # History
 
+## 0.1.4 (2022-10-09)
+* Board.search变更为filter
+* 增加filter, show命令。
 ## 0.1.3 (2022-10-09)
 * [#1](https://github.com/zillionare/boards/issues/1) fixed: tqdm caused sync failure
 * better cli output messages
