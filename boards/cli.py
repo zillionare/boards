@@ -48,7 +48,7 @@ def is_service_alive(port: int = None) -> bool:
 
     try:
         resp = httpx.get(f"http://localhost:{port}/", trust_env=False)
-    except httpx.ConnectError:
+    except httpx.NetworkError:
         return False
 
     return resp.status_code == 200
