@@ -66,11 +66,17 @@ def status(port: int = None) -> bool:
     ib.init()
     cb.init()
 
-    info = ib.info()
-    print(f"行业板块已更新至: {info['last_sync_date']},共{len(info['history'])}天数据。")
+    try:
+        info = ib.info()
+        print(f"行业板块已更新至: {info['last_sync_date']},共{len(info['history'])}天数据。")
+    except KeyError:
+        print("没有行业板块数据。")
 
     info = cb.info()
-    print(f"概念板块已更新至: {info['last_sync_date']},共{len(info['history'])}天数据。")
+    try:
+        print(f"概念板块已更新至: {info['last_sync_date']},共{len(info['history'])}天数据。")
+    except KeyError:
+        print("没有板块数据")
 
 
 def stop():
