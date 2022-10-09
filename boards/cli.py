@@ -1,6 +1,7 @@
 """Console script for boards."""
 
 import json
+import logging
 import os
 import signal
 import subprocess
@@ -11,6 +12,8 @@ import fire
 import httpx
 
 from boards.board import ConceptBoard, IndustryBoard, sync_board
+
+logger = logging.getLogger(__name__)
 
 
 def _save_proc_info(port, proc):
@@ -39,27 +42,23 @@ def is_service_alive(port: int = None) -> bool:
     if port is None:
         info = _read_proc_info()
         if info is None:
-            print("无法确定服务器状态，请指定服务器端口")
-            return
+            raise ValueError("请指定端口")
 
         port = info["port"]
 
     try:
-        resp = httpx.get(f"http://localhost:{port}/")
-        if resp.status_code == 200:
-            return True
-        else:
-            print("board服务已经运行，但无法访问", resp.status_code)
-    except Exception as e:
-        print("board服务没有正常运行，错误码", e)
+        resp = httpx.get(f"http://localhost:{port}/", trust_env=False)
+    except httpx.ConnectError:
+        return False
 
-    return False
+    return resp.status_code == 200
 
 
 def status(port: int = None) -> bool:
-    is_running = is_service_alive(port)
-    if is_running:
+    if is_service_alive(port):
         print("------ board服务正在运行 ------")
+    else:
+        print("------ board服务未运行 ------")
 
     ib = IndustryBoard()
     cb = ConceptBoard()
@@ -70,13 +69,13 @@ def status(port: int = None) -> bool:
         info = ib.info()
         print(f"行业板块已更新至: {info['last_sync_date']},共{len(info['history'])}天数据。")
     except KeyError:
-        print("没有行业板块数据。")
+        print("行业板块数据还从未同步过。")
 
-    info = cb.info()
     try:
+        info = cb.info()
         print(f"概念板块已更新至: {info['last_sync_date']},共{len(info['history'])}天数据。")
     except KeyError:
-        print("没有板块数据")
+        print("概念板块数据还从未同步过。")
 
 
 def stop():
@@ -92,15 +91,18 @@ def stop():
         sys.exit()
     if not is_service_alive():
         print("boards已停止运行")
+    else:
+        print("停止boards服务失败，请手工停止。")
 
 
 def serve(port: int = 2308):
     if is_service_alive(port):
+        print("boards正在运行中，忽略此命令。")
         return
 
     proc = subprocess.Popen([sys.executable, "-m", "boards", "serve", f"{port}"])
 
-    for i in range(30):
+    for _ in range(30):
         if is_service_alive(port):
             _save_proc_info(port=port, proc=proc.pid)
             break

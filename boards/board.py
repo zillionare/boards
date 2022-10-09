@@ -27,28 +27,28 @@ def to_float_or_none(v: Any):
 @retry(Exception, tries=5, backoff=2, delay=30, logger=logger)
 def stock_board_industry_cons_ths(symbol):
     logger.info("fetching industry board members for %s", symbol)
-    with contextlib.redirect_stdout(io.StringIO()):
+    with contextlib.redirect_stderr(io.StringIO()):
         return ak.stock_board_industry_cons_ths(symbol)
 
 
 @retry(Exception, tries=5, backoff=2, delay=30, logger=logger)
 def stock_board_concept_cons_ths(symbol):
     logger.info("fetching concept board members for %s", symbol)
-    with contextlib.redirect_stdout(io.StringIO()):
+    with contextlib.redirect_stderr(io.StringIO()):
         return ak.stock_board_concept_cons_ths(symbol)
 
 
 @retry(Exception, tries=5, backoff=2, delay=30, logger=logger)
 def stock_board_industry_name_ths():
     logger.info("fetching industry board list")
-    with contextlib.redirect_stdout(io.StringIO()):
+    with contextlib.redirect_stderr(io.StringIO()):
         return ak.stock_board_industry_name_ths()
 
 
 @retry(Exception, tries=5, backoff=2, delay=30, logger=logger)
 def stock_board_concept_name_ths():
     logger.info("fetching concept board list")
-    with contextlib.redirect_stdout(io.StringIO()):
+    with contextlib.redirect_stderr(io.StringIO()):
         return ak.stock_board_concept_name_ths()
 
 
@@ -528,6 +528,7 @@ class ConceptBoard(Board):
 
 def sync_board():
     try:
+        logger.info("start sync...")
         IndustryBoard.syncing = True
         IndustryBoard.init()
         IndustryBoard.fetch_board_list()
