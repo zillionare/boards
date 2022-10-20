@@ -3,10 +3,12 @@
 import json
 import logging
 import os
+import re
 import signal
 import subprocess
 import sys
 import time
+from typing import Any, List, Optional
 
 import fire
 import httpx
@@ -14,6 +16,19 @@ import httpx
 from boards.board import ConceptBoard, IndustryBoard, sync_board
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_as_str_array(args: Any):
+    if args is None:
+        return None
+    elif isinstance(args, str):
+        arr = re.split(r"[,，]", args)
+    elif hasattr(args, "__iter__"):
+        arr = args
+    elif isinstance(args, int):
+        arr = [args]
+
+    return [str(item) for item in arr]
 
 
 def _save_proc_info(port, proc):
@@ -120,6 +135,13 @@ def new_boards(days: int = 10):
         print(result)
 
 
+def latest_boards(n: int = 3):
+    cb = ConceptBoard()
+    cb.init()
+    df = cb.find_latest_n_concept_boards(n)
+    print(df)
+
+
 def new_members(days: int = 10, prot: int = None):
     cb = ConceptBoard()
     cb.init()
@@ -140,38 +162,84 @@ def sync():
     sync_board()
 
 
-def filter(*within, without=[]):
-    cb = ConceptBoard()
-    cb.init()
-
-    codes = cb.filter(within, without=without)
-    for code in codes:
-        name = cb.get_stock_alias(code)
-        print(code, name)
-
-
-def show(sub: str, *args, **kwargs):
-    if sub == "concepts":
+def filter(industry=None, with_concepts=Optional[List[str]], without=[]):
+    with_concepts = _parse_as_str_array(with_concepts)
+    without = _parse_as_str_array(without)
+    if with_concepts is not None:
         cb = ConceptBoard()
         cb.init()
 
-        if kwargs.get("help"):
-            print("boards show concepts - 列出当前所有概念")
-            print("boards show concepts 000001 - 列出个股000001所属的概念板块")
-            return
+        if type(with_concepts) in (str, int):
+            with_concepts = [with_concepts]
 
-        if len(args) == 0:
-            for i, (date, code, name, *_) in enumerate(cb.boards):
-                print(date, code, name)
+        with_concepts = [str(item) for item in with_concepts]
 
-            print(f"---- 总共{i}个概念 ----")
-        else:
-            code = str(args[0])
-            boards = cb.get_boards(code)
-            for board in boards:
-                print(board, cb.get_name(board))
+        if type(without) in (str, int):
+            without[without]
+
+        without = [str(item) for item in without]
+        concepts_codes = set(cb.filter(with_concepts, without=without))
     else:
-        print("支持的子命令有concepts")
+        concepts_codes = None
+
+    codes = []
+    if industry is not None:
+        ib = IndustryBoard()
+        ib.init()
+        # 查找行业板块
+        if not re.match(r"\d+$", industry):
+            boards = ib.fuzzy_match_board_name(industry)
+            for board in boards:
+                codes.extend(ib.get_members(board))
+        else:
+            codes = ib.get_members(industry)
+
+        codes = set(codes)
+    else:
+        codes = None
+
+    final_results = []
+    if codes is None or concepts_codes is None:
+        final_results = codes or concepts_codes
+    else:
+        final_results = codes.intersection(concepts_codes)
+
+    try:
+        board = cb
+    except UnboundLocalError:
+        board = ib
+    for code in final_results:
+        name = board.get_stock_alias(code)
+        print(code, name)
+
+
+def concepts(code: str):
+    cb = ConceptBoard()
+    cb.init()
+
+    for board in cb.get_boards(code):
+        print(board, cb.get_name(board))
+
+
+def industry(code: str):
+    ib = IndustryBoard()
+    ib.init()
+
+    for board in ib.get_boards(code):
+        print(board, ib.get_name(board))
+
+
+def list_boards(sub: str):
+    if sub == "concepts":
+        cb = ConceptBoard()
+        cb.init()
+        for i, (date, code, name, *_) in enumerate(cb.boards):
+            print(date, code, name)
+    elif sub == "industry":
+        ib = IndustryBoard()
+        ib.init()
+        for i, (date, code, name, *_) in enumerate(ib.boards):
+            print(date, code, name)
 
 
 def main():
@@ -179,12 +247,15 @@ def main():
         {
             "new_members": new_members,
             "new_boards": new_boards,
+            "latest_boards": latest_boards,
             "serve": serve,
             "status": status,
             "sync": sync,
             "stop": stop,
             "filter": filter,
-            "show": show,
+            "concepts": concepts,
+            "industry": industry,
+            "list": list_boards,
         }
     )
 

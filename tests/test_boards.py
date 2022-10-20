@@ -190,7 +190,7 @@ class BoardTest(unittest.TestCase):
         actual = cb.get_code("农业种植")
         self.assertEqual("308016", actual)
 
-    def test_search(self):
+    def test_filter(self):
         ib = IndustryBoard()
         cb = ConceptBoard()
 
@@ -208,6 +208,16 @@ class BoardTest(unittest.TestCase):
 
         stocks = cb.filter(in_boards, without=["308956"])
         self.assertSetEqual(set(), set(stocks))
+
+        stocks = set(ib.filter(["种", "其他种植业"]))
+        self.assertSetEqual({"600108", "600540", "600359", "601118", "002772"}, stocks)
+
+        # 顺序不改变结果
+        stocks = set(ib.filter(["其他种植业", "种"]))
+        self.assertSetEqual({"600108", "600540", "600359", "601118", "002772"}, stocks)
+
+        stocks = set(ib.filter(["种植业", "种子生产"]))
+        print(stocks)
 
     def test_find_new_concept_boards(self):
         cb = ConceptBoard()

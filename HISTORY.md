@@ -1,5 +1,8 @@
 # History
 
+## 0.2 (2022-10-14)
+* 增加latest_boards命令，用以查找最近`n`天新增的概念板块。
+* 重构filter命令，允许按行业和概念同时查找。
 ## 0.1.4 (2022-10-09)
 * Board.search变更为filter
 * 增加filter, show命令。

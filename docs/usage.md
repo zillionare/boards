@@ -1,30 +1,55 @@
-
-To use boards in a project
+在项目中使用boards,您需要从boards中导入IndustryBoard或者ConceptBoard:
 
 ```
-    import boards
+    from boards import IndustryBoard, ConceptBoard
+    ib = IndustryBoard()
+    ib.init()
+
+    # do the same to ConceptBoard if it's needed
 ```
 
 ## 命令行
 安装完成后，您的系统将自动增加`boards`命令（仅对MacOs和Linux有效）。提供了以下命令：
 
-### serve
-boards通akshare从同花顺网站抓取数据，每次只能抓取当天的数据。为了自动保持与网站一致更新，我们提供了服务模式，需要您运行`boards serve`来开启。这将启动一个服务器，并自动于每日凌晨5时开始更新当天的板块数据。
+### 服务管理
+```
+# 启动服务
+boards serve
 
-这个命令接受一个可选参数，即服务器监听的端口。一般保持默认即可。
+# 停止服务
+boards stop
 
-注意，如果系统重启，您需要重新运行一次上述命令。
+# 查看服务状态，以及数据同步情况
+boards status
+```
 
-在上述命令运行后，boards将自动执行一次数据同步任务。
+#### 查询新增概念板块
+```
+boards new_boards
+```
+#### 查询概念板块新增个股
+```
+boards new_members
+```
 
-### status
-用以查看当前系统上是否运行了boards服务。
+#### 查询最新新增的n个概念
+```
+boards latest_boards 3
+```
 
-### new_members
-查看近期哪些概念板块新增了个股。接受一个可选参数，即查看最近几天内新增的个股数据。默认为10天。
+#### 查询个股所属概念
+```
+boards show concepts 000001
+```
+#### 列出所有的概念板块
+```
+boards show concepts
+```
 
-### new_boards
-查看近期新增了哪些概念板块。接受一个可选参数，即查看最近几天内新增的概念板块。
+#### 查询同时处于某几个概念板块中的个股
+```
+boards filter --industry 计算机应用 --with-concpets 医药 医疗器械 --without 跨境支付
+```
 
 ## 编程接口
 boards提供了[IndustryBoard][boards.board.IndustryBoard]和[ConceptBoard][boards.board.ConceptBoard]两个主要的类。
@@ -43,6 +68,8 @@ ConceptBoard.init()
 一般而言，在调用其它api之前，您需要先生成对象实例：
 ```python
 ib = IndustryBoard()
+ib.init()
+
 ib.get_code("种植业与林业")
 ```
 

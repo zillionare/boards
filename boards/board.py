@@ -270,6 +270,13 @@ class Board:
         self.__class__._store[f"{self.category}/boards"] = value
 
     @property
+    def latest_members(self):
+        last_sync_date = self.store[f"{self.category}/members"].attrs.get("latest")
+        date = arrow.get(last_sync_date).format("YYYYMMDD")
+
+        return self.members_group[date]
+
+    @property
     def store(self):
         return self.__class__._store
 
@@ -282,26 +289,21 @@ class Board:
             "history": history,
         }
 
-    def get_boards(self, code: str, date: datetime.date = None) -> List[str]:
+    def get_boards(self, code_or_name: str, date: datetime.date = None) -> List[str]:
         """给定股票，返回其所属的板块
 
         Args:
-            code: 股票代码
+            code_or_name: 股票代码或者名字
 
         Returns:
             股票所属板块列表
         """
-        latest = self.store[f"{self.category}/members"].attrs.get("latest")
-        if latest is None:
-            raise ValueError("data not ready, please call `sync` first!")
-        date = arrow.get(date or latest).format("YYYYMMDD")
-
-        members = self.members_group[date]
-        idx = np.argwhere(members["code"] == code).flatten()
-        if len(idx):
-            return members[idx]["board"].tolist()
+        if not re.match(r"\d+$", code_or_name):
+            indice = np.argwhere(self.latest_members["name"] == code_or_name).flatten()
+            return self.latest_members[indice]["board"]
         else:
-            return None
+            indice = np.argwhere(self.latest_members["code"] == code_or_name).flatten()
+            return self.latest_members[indice]["board"]
 
     def get_members(self, code: str, date: datetime.date = None) -> List[str]:
         """给定板块代码，返回该板块内所有的股票代码
@@ -345,6 +347,7 @@ class Board:
     def fuzzy_match_board_name(self, name: str) -> List[str]:
         """给定板块名称，查找名字近似的板块，返回其代码
 
+        # todo: 返回
         Args:
             name: 用以搜索的板块名字
 
@@ -416,34 +419,50 @@ class Board:
         """
         normalized = []
         for board in in_boards:
-            if not re.match(r"\d+", board):
+            if not re.match(r"\d+$", board):
                 found = self.fuzzy_match_board_name(board) or []
                 if not found:
                     logger.warning("%s is not in our board list", board)
-                normalized.extend(found)
+                else:
+                    # 通过模糊查找到的一组板块，它们之间是union关系，放在最前面
+                    normalized.insert(0, found)
             else:
                 normalized.append(board)
 
         results = None
-        for board in normalized:
-            if board not in self.boards["code"]:
-                logger.warning("wrong board code %, skipped", board)
-                continue
+        for item in normalized:
+            if isinstance(item, list):  # union all stocks
+                new_set = []
+                for board in item:
+                    if board not in self.boards["code"]:
+                        continue
+
+                    new_set.extend(self.get_members(board))
+                new_set = set(new_set)
+            else:
+                if item not in self.boards["code"]:
+                    logger.warning("wrong board code %, skipped", item)
+                    continue
+
+                new_set = set(self.get_members(item))
 
             if results is None:
-                results = set(self.get_members(board))
+                results = new_set
             else:
-                results = results.intersection(set(self.get_members(board)))
+                results = results.intersection(new_set)
 
         normalized_without = []
         for item in without:
-            if not re.match(r"\d+", item):
+            if not re.match(r"\d+$", item):
                 codes = self.fuzzy_match_board_name(item)
                 if not codes:
                     logger.warning("%s is not in our board list", item)
                 normalized_without.extend(codes)
             else:
                 normalized_without.append(item)
+
+        if not results:
+            return []
 
         final_result = []
         for stock in results:
@@ -469,22 +488,23 @@ class ConceptBoard(Board):
         Returns:
             在`days`天以内出现的新概念板块代码列表,包含date, name, code, members诸列
         """
+        df = pd.DataFrame(self.boards[:])
         today = arrow.now()
         start = today.shift(days=-days).date()
 
-        # exclude date is None from self.boards
-        idx = np.argwhere(~np.isnat(self.boards["date"])).flatten()
-        if len(idx) == 0:
-            return None
+        return df[df.date.dt.date >= start]
 
-        boards = self.boards[idx]
-        idx = np.argwhere(boards["date"] > start).flatten()
-        if len(idx):
-            return pd.DataFrame(
-                boards[idx], columns=["date", "name", "code", "members"]
-            )
-        else:
-            return None
+    def find_latest_n_concept_boards(self, n: int = 3) -> pd.DataFrame:
+        """查找最近新增的`n`个板块
+
+        Args:
+            n: 返回板块个数
+
+        Returns:
+            最近新增的`n`个板块信息
+        """
+        df = pd.DataFrame(self.boards[:])
+        return df.nlargest(n, "date")
 
     def new_members_in_board(self, days: int = 10) -> Dict[str, Set]:
         """查找在`days`天内新增加到某个概念板块的个股列表
