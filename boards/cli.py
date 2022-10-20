@@ -162,7 +162,7 @@ def sync():
     sync_board()
 
 
-def filter(industry=None, with_concepts=Optional[List[str]], without=[]):
+def filter(industry=None, with_concepts: Optional[List[str]] = None, without=[]):
     with_concepts = _parse_as_str_array(with_concepts)
     without = _parse_as_str_array(without)
     if with_concepts is not None:
