@@ -1,7 +1,7 @@
 [tool]
 [tool.poetry]
 name = "zillionare-ths-boards"
-version = "0.2.0"
+version = "0.2.1"
 homepage = "https://github.com/zillionare/boards"
 description = "同花顺行业板块及概念板块数据本地化"
 authors = ["aaron yang <aaron_yang@jieyu.ai>"]
