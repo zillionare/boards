@@ -13,7 +13,7 @@ from typing import Any, List, Optional
 import fire
 import httpx
 
-from boards.board import ConceptBoard, IndustryBoard, sync_board
+from boards.board import ConceptBoard, IndustryBoard, combined_filter, sync_board
 
 logger = logging.getLogger(__name__)
 
@@ -163,52 +163,29 @@ def sync():
 
 
 def filter(industry=None, with_concepts: Optional[List[str]] = None, without=[]):
-    with_concepts = _parse_as_str_array(with_concepts)
-    without = _parse_as_str_array(without)
-    if with_concepts is not None:
-        cb = ConceptBoard()
-        cb.init()
+    if industry is not None and isinstance(industry, int):
+        industry = str(industry)
 
-        if type(with_concepts) in (str, int):
-            with_concepts = [with_concepts]
-
+    if with_concepts is not None and isinstance(with_concepts, list):
         with_concepts = [str(item) for item in with_concepts]
+    elif isinstance(with_concepts, str):
+        with_concepts = re.split(r"[，,]", with_concepts)
 
-        if type(without) in (str, int):
-            without[without]
-
+    if without is not None and isinstance(without, list):
         without = [str(item) for item in without]
-        concepts_codes = set(cb.filter(with_concepts, without=without))
+    elif isinstance(without, str):
+        without = re.split(r"[,，]", without)
+
+    results = combined_filter(industry, with_concepts, without)
+
+    if industry is None:
+        board = IndustryBoard()
+        board.init()
     else:
-        concepts_codes = None
+        board = ConceptBoard()
+        board.init()
 
-    codes = []
-    if industry is not None:
-        ib = IndustryBoard()
-        ib.init()
-        # 查找行业板块
-        if not re.match(r"\d+$", industry):
-            boards = ib.fuzzy_match_board_name(industry)
-            for board in boards:
-                codes.extend(ib.get_members(board))
-        else:
-            codes = ib.get_members(industry)
-
-        codes = set(codes)
-    else:
-        codes = None
-
-    final_results = []
-    if codes is None or concepts_codes is None:
-        final_results = codes or concepts_codes
-    else:
-        final_results = codes.intersection(concepts_codes)
-
-    try:
-        board = cb
-    except UnboundLocalError:
-        board = ib
-    for code in final_results:
+    for code in results:
         name = board.get_stock_alias(code)
         print(code, name)
 

@@ -4,7 +4,7 @@ import io
 import logging
 import os
 import re
-from typing import Any, Dict, List, Set
+from typing import Any, Dict, List, Optional, Set
 
 import akshare as ak
 import arrow
@@ -405,6 +405,31 @@ class Board:
 
         return ak.stock_board_industry_index_ths(name, start, end)
 
+    def normalize_board_name(self, in_boards: List[str]) -> List[str]:
+        """将名称与代码混装的`boards`转换为全部由板块代码表示的列表。
+
+        `in_boards`传入的值，除板块代码外，还可以是板块名全称或者名称的一部分。在后者这种情况下，将通过模糊匹配进行补全。
+
+        Args:
+            in_boards: 板块代码或者名称
+
+        Returns:
+            板块代码列表
+        """
+        normalized = []
+        for board in in_boards:
+            if not re.match(r"\d+$", board):
+                found = self.fuzzy_match_board_name(board) or []
+                if not found:
+                    logger.warning("%s is not in our board list", board)
+                else:
+                    # 通过模糊查找到的一组板块，它们之间是union关系，放在最前面
+                    normalized.extend(found)
+            else:
+                normalized.append(board)
+
+        return normalized
+
     def filter(self, in_boards: List[str], without: List[str] = []) -> List[str]:
         """查找同时存在于`in_boards`板块，但不在`without`板块的股票
 
@@ -574,3 +599,49 @@ def sync_board():
     finally:
         IndustryBoard.syncing = False
         ConceptBoard.syncing = False
+
+
+def combined_filter(
+    industry: str = None, with_concepts: Optional[List[str]] = None, without=[]
+) -> List[str]:
+    """针对行业板块与概念板块的联合筛选
+
+    Args:
+        industry: 返回代码必须包含在这些行业板块内
+        with_concepts: 返回代码必须包含在这些概念内
+        without: 返回代码必须不在这些概念内
+
+    Returns:
+        股票代码列表
+    """
+    if with_concepts is not None:
+        cb = ConceptBoard()
+        cb.init()
+
+        if isinstance(with_concepts, str):
+            with_concepts = [with_concepts]
+
+        if isinstance(without, str):
+            without = [without]
+        concepts_codes = set(cb.filter(with_concepts, without=without))
+    else:
+        concepts_codes = None
+
+    codes = None
+    if industry is not None:
+        ib = IndustryBoard()
+        ib.init()
+
+        codes = ib.filter([industry])
+        if codes is not None:
+            codes = set(codes)
+    else:
+        codes = None
+
+    final_results = []
+    if codes is None or concepts_codes is None:
+        final_results = codes or concepts_codes
+    else:
+        final_results = codes.intersection(concepts_codes)
+
+    return final_results
