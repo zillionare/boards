@@ -8,7 +8,7 @@ import arrow
 import pandas as pd
 from numpy.testing import assert_array_equal
 
-from boards.board import ConceptBoard, IndustryBoard
+from boards.board import ConceptBoard, IndustryBoard, combined_filter
 
 concept_cons_ths = None
 
@@ -242,3 +242,7 @@ class BoardTest(unittest.TestCase):
 
             stocks = cb.new_members_in_board(1)
             self.assertDictEqual(stocks, {"300435": exp})
+
+    def test_combined_filter(self):
+        actual = combined_filter("种植业与林业", ["粮食概念", "转基因"])
+        self.assertSetEqual({"000998", "002041"}, actual)
