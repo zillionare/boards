@@ -46,7 +46,7 @@ def start(port: int = 2308, log_file="/var/log/boards/server.log"):
         logger.addHandler(handler)
 
     scheduler = BackgroundScheduler()
-    run_at = int(os.environ.get("boards_run_at", "5"))
+    run_at = int(os.environ.get("boards_run_at", "21"))
     scheduler.add_job(sync_board, trigger="cron", hour=run_at)
     scheduler.add_job(ConceptBoard.init, "date")
     scheduler.add_job(IndustryBoard.init, "date")

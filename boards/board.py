@@ -42,15 +42,24 @@ def stock_board_concept_cons_ths(symbol):
 def stock_board_industry_name_ths():
     logger.info("fetching industry board list")
     with contextlib.redirect_stderr(io.StringIO()):
-        return ak.stock_board_industry_name_ths()
+        data = ak.stock_board_industry_name_ths()
+        if data is None or len(data) == 0:
+            logger.warning("no industry names fetched from ths")
+            raise ValueError("empty result")
+        else:
+            return data
 
 
 @retry(Exception, tries=5, backoff=2, delay=30, logger=logger)
 def stock_board_concept_name_ths():
     logger.info("fetching concept board list")
     with contextlib.redirect_stderr(io.StringIO()):
-        return ak.stock_board_concept_name_ths()
-
+        data = ak.stock_board_concept_name_ths()
+        if data is None or len(data) == 0:
+            logger.warning("no concept names fetched from ths")
+            raise ValueError("empty result")
+        else:
+            return data
 
 class Board:
     """行业板块及概念板块基类
@@ -151,6 +160,7 @@ class Board:
                 .to_records(index=False)
                 .astype(dtype)
             )
+        logger.info("total boards fetched: %d", len(boards))
 
         key = f"{cls.category}/boards"
         cls._store[key] = boards
@@ -593,12 +603,14 @@ def sync_board():
         ConceptBoard.syncing = True
         ConceptBoard.init()
         ConceptBoard.fetch_board_list()
-        ConceptBoard.fetch_board_members()
+        ConceptBoard.fetch_board_members()        
     except Exception as e:
         logger.exception(e)
     finally:
         IndustryBoard.syncing = False
         ConceptBoard.syncing = False
+
+    logger.info("sync finished...")
 
 
 def combined_filter(
