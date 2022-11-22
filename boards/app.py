@@ -45,6 +45,7 @@ def start(port: int = 2308, log_file="/var/log/boards/server.log"):
         handler.setFormatter(formatter)
         logger.addHandler(handler)
 
+    os.environ["all_proxy"] = ""
     scheduler = BackgroundScheduler()
     run_at = int(os.environ.get("boards_run_at", "21"))
     scheduler.add_job(sync_board, trigger="cron", hour=run_at)

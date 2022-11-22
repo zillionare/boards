@@ -594,6 +594,8 @@ class ConceptBoard(Board):
 
 def sync_board():
     try:
+        os.environ["all_proxy"] = ""
+
         logger.info("start sync...")
         IndustryBoard.syncing = True
         IndustryBoard.init()
